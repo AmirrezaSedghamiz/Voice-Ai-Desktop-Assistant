@@ -254,9 +254,33 @@ def setup_tts(force: bool = False):
     print(f"[OK] Piper TTS voice assets ready at {TTS_MODELS_DIR}")
 
 
+def setup_stt(force: bool = False):
+    """Downloads and verifies the multilingual faster-whisper base model."""
+    stt_dir = STT_MODELS_DIR / "whisper-base"
+    stt_dir.mkdir(parents=True, exist_ok=True)
+    model_bin = stt_dir / "model.bin"
+
+    if not force and model_bin.exists():
+        actual_size = model_bin.stat().st_size
+        print(f"[OK] STT model already exists: {model_bin.name} ({actual_size / (1024*1024):.1f} MB).")
+        actual_hash = calculate_sha256(model_bin)
+        print(f"[OK] STT model.bin SHA-256: {actual_hash}. Skipping download.")
+        return
+
+    print("[*] Provisioning multilingual Whisper base model (CTranslate2 INT8 format)...")
+    from faster_whisper import download_model
+    download_model("base", output_dir=str(stt_dir), local_files_only=False)
+
+    if not model_bin.exists():
+        raise FileNotFoundError(f"Expected model.bin was not created in {stt_dir}")
+    actual_hash = calculate_sha256(model_bin)
+    print(f"[OK] STT model downloaded and verified: {model_bin.name} (SHA-256: {actual_hash})")
+
+
 def main():
     force = "--force" in sys.argv
     download_tts = "--tts" in sys.argv or "--voice" in sys.argv or "--all" in sys.argv
+    download_stt = "--stt" in sys.argv or "--voice" in sys.argv or "--all" in sys.argv
     print("==================================================")
     print("   AI Assistant: Local Assets Setup & Verifier    ")
     print("==================================================")
@@ -267,6 +291,8 @@ def main():
         setup_model(force=force)
         if download_tts:
             setup_tts(force=force)
+        if download_stt:
+            setup_stt(force=force)
         print("\n[SUCCESS] All requested assets are verified and ready for offline operation.")
     except Exception as e:
         print(f"\n[ERROR] Setup failed: {e}", file=sys.stderr)
@@ -275,4 +301,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
