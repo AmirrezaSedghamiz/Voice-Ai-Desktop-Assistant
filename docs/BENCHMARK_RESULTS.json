@@ -1,0 +1,75 @@
+{
+  "results": [
+    {
+      "id": "en_short",
+      "language": "English",
+      "description": "Short factual prompt",
+      "prompt_tokens": 29,
+      "tokens_generated": 172,
+      "tokens_per_second": 61.86,
+      "total_time_seconds": 2.78,
+      "ram_used_gb": 15.92,
+      "vram_used_mb": 1462.0,
+      "response_preview": "The capital of France is Paris, and its primary landmark is the Eiffel Tower."
+    },
+    {
+      "id": "en_reasoning",
+      "language": "English",
+      "description": "Logical reasoning and formatting",
+      "prompt_tokens": 41,
+      "tokens_generated": 512,
+      "tokens_per_second": 63.06,
+      "total_time_seconds": 8.12,
+      "ram_used_gb": 15.93,
+      "vram_used_mb": 1477.0,
+      "response_preview": "To determine the total amount the customer spent, we will break the calculation into two parts: the cost of the apples and the cost of the o..."
+    },
+    {
+      "id": "fa_factual",
+      "language": "Persian",
+      "description": "Factual Persian comprehension & syntax",
+      "prompt_tokens": 56,
+      "tokens_generated": 200,
+      "tokens_per_second": 61.25,
+      "total_time_seconds": 3.266,
+      "ram_used_gb": 16.0,
+      "vram_used_mb": 1476.0,
+      "response_preview": "\u067e\u0627\u06cc\u062a\u062e\u062a \u0627\u06cc\u0631\u0627\u0646 \u0634\u0647\u0631 \u062a\u0647\u0631\u0627\u0646 \u0627\u0633\u062a \u06a9\u0647 \u062a\u0642\u0631\u06cc\u0628 8.5 \u0645\u06cc\u0644\u06cc\u0648\u0646 \u0646\u0641\u0631 \u062c\u0645\u0639\u06cc\u062a \u062f\u0627\u0631\u062f."
+    },
+    {
+      "id": "fa_grammar",
+      "language": "Persian",
+      "description": "Complex Persian phrasing and vocabulary",
+      "prompt_tokens": 58,
+      "tokens_generated": 512,
+      "tokens_per_second": 64.23,
+      "total_time_seconds": 7.972,
+      "ram_used_gb": 16.02,
+      "vram_used_mb": 1458.0,
+      "response_preview": "**\u0647\u0634\u062f\u0627\u0631 \u0646\u0645\u0627\u062f\u06cc\u0646 (Shallow Learning)**:   \u0647\u0648\u0634 \u0645\u0635\u0646\u0648\u0639\u06cc \u0646\u0645\u0627\u062f\u06cc\u0646 \u0628\u0647 \u0645\u062f\u0644 \u0647\u0627\u06cc\u06cc \u0627\u0634\u0627\u0631\u0647 \u0645\u06cc \u06a9\u0646\u062f \u06a9\u0647 \u0628\u0627 \u0627\u0628\u0632\u0627\u0631\u0647\u0627\u06cc \u0633\u0627\u062f\u0647 \u0648 \u0646\u0645\u0627\u062f\u0647\u0627\u06cc \u0628\u06cc\u0634\u062a\u0631\u06cc \u06cc\u0627\u062f\u06af\u06cc\u0631\u06cc \u0645\u06cc \u06a9\u0646\u0646\u062f. \u0627\u06cc\u0646 ..."
+    }
+  ],
+  "settings": {
+    "app_name": "Resource-Constrained Desktop AI Assistant",
+    "version": "0.1.0",
+    "project_root": "C:\\Users\\ACER\\Desktop\\AI voice assistant",
+    "model_path": "C:\\Users\\ACER\\Desktop\\AI voice assistant\\models\\Qwen3-1.7B-Q4_K_M.gguf",
+    "llama_bin_dir": "C:\\Users\\ACER\\Desktop\\AI voice assistant\\bin\\llama.cpp",
+    "log_dir": "C:\\Users\\ACER\\Desktop\\AI voice assistant\\logs",
+    "governor": {
+      "cpu_threads": 4,
+      "process_priority": "BELOW_NORMAL",
+      "gpu_layers": 24,
+      "max_context_tokens": 2048,
+      "max_output_tokens": 512,
+      "max_concurrent_requests": 1,
+      "idle_timeout_seconds": 300,
+      "low_resource_mode": false
+    },
+    "network": {
+      "allow_external_networking": false,
+      "server_host": "127.0.0.1",
+      "server_port": 8080
+    }
+  }
+}
