@@ -63,54 +63,63 @@ if "%NEED_DOWNLOAD%"=="1" (
 )
 
 echo.
-REM 4. Handle command arguments
-if "%1"=="--test" (
-    echo [*] Running test suite...
-    .venv\Scripts\pytest.exe -v
-    goto :end
-)
-
-if "%1"=="--benchmark" (
-    echo [*] Running resource and latency benchmarks...
-    .venv\Scripts\python.exe -m src.eval.benchmark
-    goto :end
-)
-
-if "%1"=="--docker" (
-    echo [*] Launching via Docker Compose (using volume-mounted models)...
-    docker compose up --build
-    goto :end
-)
-
-if "%1"=="--low-resource" (
-    echo [*] Starting assistant in LOW-RESOURCE mode (CPU priority below normal, 2 threads)...
-    .venv\Scripts\python.exe -m src.cli --low-resource
-    goto :end
-)
-
-if "%1"=="--voice" (
-    echo [*] Checking local voice models...
-    set "NEED_VOICE=0"
-    if not exist "models\tts\en_US-lessac-medium.onnx" set "NEED_VOICE=1"
-    if not exist "models\stt\whisper-base\model.bin" set "NEED_VOICE=1"
-    if "!NEED_VOICE!"=="1" (
-        echo [*] Voice models missing. Running voice asset downloader...
-        .venv\Scripts\python.exe scripts\download_assets.py --voice
-    )
-    echo [*] Starting Assistant in VOICE mode...
-    .venv\Scripts\python.exe -m src.cli %*
-    goto :end
-)
-
-if "%1"=="--download-voice" (
-    echo [*] Downloading and verifying all local voice models...
-    .venv\Scripts\python.exe scripts\download_assets.py --voice
-    goto :end
-)
+REM 4. Handle command arguments via clean label dispatching
+if "%1"=="--test" goto run_test
+if "%1"=="--benchmark" goto run_benchmark
+if "%1"=="--docker" goto run_docker
+if "%1"=="--low-resource" goto run_low_resource
+if "%1"=="--voice" goto voice_mode
+if "%1"=="--download-voice" goto download_voice_mode
 
 REM Default: Interactive CLI
 echo [*] Starting Assistant Interactive CLI...
 .venv\Scripts\python.exe -m src.cli %*
+goto end
+
+:run_test
+echo [*] Running test suite...
+.venv\Scripts\pytest.exe -v
+goto end
+
+:run_benchmark
+echo [*] Running resource and latency benchmarks...
+.venv\Scripts\python.exe -m src.eval.benchmark
+goto end
+
+:run_docker
+echo [*] Launching via Docker Compose...
+docker compose up --build
+goto end
+
+:run_low_resource
+echo [*] Starting assistant in LOW-RESOURCE mode [CPU priority below normal, 2 threads]...
+.venv\Scripts\python.exe -m src.cli --low-resource
+goto end
+
+:voice_mode
+echo [*] Checking local voice models...
+if not exist "models\tts\en_US-lessac-medium.onnx" goto download_voice_assets
+if not exist "models\stt\whisper-base\model.bin" goto download_voice_assets
+goto launch_voice
+
+:download_voice_assets
+echo [*] Voice models missing. Running voice asset downloader...
+.venv\Scripts\python.exe scripts\download_assets.py --voice
+if errorlevel 1 (
+    echo [ERROR] Failed to download voice assets.
+    pause
+    exit /b 1
+)
+
+:launch_voice
+echo [*] Starting Assistant in VOICE mode...
+.venv\Scripts\python.exe -m src.cli %*
+goto end
+
+:download_voice_mode
+echo [*] Downloading and verifying all local voice models...
+.venv\Scripts\python.exe scripts\download_assets.py --voice
+goto end
 
 :end
 if errorlevel 1 pause
