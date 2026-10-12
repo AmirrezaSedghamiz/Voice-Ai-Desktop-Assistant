@@ -50,6 +50,12 @@ bin/llama.cpp/
 models/*.gguf
 models/*.bin
 models/*.safetensors
+models/tts/*.onnx
+models/tts/*.json
+models/stt/
+!models/tts/.gitkeep
+!models/stt/.gitkeep
+
 
 # Runtime logs and scratch files
 scratch/

@@ -14,6 +14,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_ROOT / "models"
+TTS_MODELS_DIR = MODELS_DIR / "tts"
+STT_MODELS_DIR = MODELS_DIR / "stt"
 BIN_DIR = PROJECT_ROOT / "bin" / "llama.cpp"
 
 # Asset manifests with exact upstream URLs, sizes, and SHA-256 hashes
@@ -38,7 +40,20 @@ ASSETS = {
         "expected_size": 1282439264,
         "target_file": MODELS_DIR / "Qwen3-1.7B-Q4_K_M.gguf",
     },
+    "piper_voice_onnx": {
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
+        "expected_sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+        "expected_size": 63201294,
+        "target_file": TTS_MODELS_DIR / "en_US-lessac-medium.onnx",
+    },
+    "piper_voice_json": {
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json",
+        "expected_sha256": "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0",
+        "expected_size": 4885,
+        "target_file": TTS_MODELS_DIR / "en_US-lessac-medium.onnx.json",
+    },
 }
+
 
 
 def calculate_sha256(filepath: Path) -> str:
@@ -204,8 +219,44 @@ def setup_model(force: bool = False):
     print(f"[OK] Model verified successfully: {actual_hash}")
 
 
+def setup_tts(force: bool = False):
+    """Downloads and verifies the Piper TTS voice model and configuration."""
+    TTS_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    for asset_key in ("piper_voice_onnx", "piper_voice_json"):
+        asset = ASSETS[asset_key]
+        target_file = asset["target_file"]
+
+        if not force and target_file.exists():
+            actual_size = target_file.stat().st_size
+            if actual_size == asset["expected_size"]:
+                print(f"[OK] Voice asset exists: {target_file.name} (size: {actual_size} bytes).")
+                print("     Verifying SHA-256 checksum...")
+                actual_hash = calculate_sha256(target_file)
+                if actual_hash == asset["expected_sha256"]:
+                    print(f"[OK] Voice asset checksum valid: {actual_hash}. Skipping download.")
+                    continue
+                else:
+                    print(f"[!] Existing asset checksum mismatch. Re-downloading: {target_file.name}")
+                    target_file.unlink()
+            else:
+                print(f"[!] Existing asset size mismatch ({actual_size} != {asset['expected_size']}). Re-downloading.")
+                target_file.unlink()
+
+        download_with_progress(asset["url"], target_file, asset["expected_size"])
+        print(f"[*] Verifying SHA-256 hash of {target_file.name}...")
+        actual_hash = calculate_sha256(target_file)
+        if actual_hash != asset["expected_sha256"]:
+            target_file.unlink()
+            raise ValueError(
+                f"Asset checksum mismatch for {target_file.name}!\nExpected: {asset['expected_sha256']}\nGot: {actual_hash}"
+            )
+        print(f"[OK] {target_file.name} verified successfully: {actual_hash}")
+    print(f"[OK] Piper TTS voice assets ready at {TTS_MODELS_DIR}")
+
+
 def main():
     force = "--force" in sys.argv
+    download_tts = "--tts" in sys.argv or "--voice" in sys.argv or "--all" in sys.argv
     print("==================================================")
     print("   AI Assistant: Local Assets Setup & Verifier    ")
     print("==================================================")
@@ -214,7 +265,9 @@ def main():
     try:
         setup_llama_cpp(force=force)
         setup_model(force=force)
-        print("\n[SUCCESS] All assets are verified and ready for offline inference.")
+        if download_tts:
+            setup_tts(force=force)
+        print("\n[SUCCESS] All requested assets are verified and ready for offline operation.")
     except Exception as e:
         print(f"\n[ERROR] Setup failed: {e}", file=sys.stderr)
         sys.exit(1)
@@ -222,3 +275,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
