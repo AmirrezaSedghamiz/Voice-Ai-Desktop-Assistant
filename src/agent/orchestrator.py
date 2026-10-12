@@ -5,6 +5,7 @@ resource governor, and local audit logger.
 
 import json
 import logging
+import re
 from typing import Any
 import psutil
 
@@ -15,14 +16,55 @@ from src.core.governor import ResourceGovernor
 
 logger = logging.getLogger("assistant.orchestrator")
 
-SYSTEM_PROMPT = """You are a helpful, secure, resource-constrained Windows local desktop AI assistant.
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F680-\U0001F6FF"  # transport & map symbols
+    "\U0001F700-\U0001F77F"  # alchemical symbols
+    "\U0001F780-\U0001F7FF"  # geometric shapes extended
+    "\U0001F800-\U0001F8FF"  # supplemental arrows-C
+    "\U0001F900-\U0001F9FF"  # supplemental symbols and pictographs
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-A
+    "\u2600-\u26FF"          # misc symbols
+    "\u2700-\u27BF"          # dingbats
+    "\uFE00-\uFE0F"          # variation selectors
+    "\u200d"                 # zero width joiner
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def strip_emojis(text: str) -> str:
+    """Removes all Unicode emojis and decorative pictographs from text."""
+    if not text:
+        return ""
+    cleaned = EMOJI_PATTERN.sub("", text)
+    return re.sub(r" {2,}", " ", cleaned).strip()
+
+
+SYSTEM_PROMPT = """/no_think
+You are a helpful, secure, resource-constrained Windows local desktop AI assistant running on the local Qwen3-1.7B model.
 You operate completely offline.
-When answering conversational questions, be direct, concise, and accurate.
-You must never request or attempt shell commands, external network connections, or administrative system changes.
-If asked for system diagnostic information, you can propose calling one of these safe tools in JSON format:
-- get_system_status
-- get_battery_status
-- get_resource_metrics
+
+STYLE AND VOICE RULES:
+- NEVER use emojis, emoticons, or decorative symbols in any response.
+- Be direct, concise, and natural so your responses sound clean when spoken aloud.
+
+MEMORY AND CONTEXT RULES:
+- You have full access to the current conversation history in this session.
+- Always use earlier messages in the conversation to remember the user's name, corrections, preferences, and prior topics.
+- If the user spells out a name or word (even if speech-to-text transcribes the letters phonetically, such as "AMIR or EZA" and "SE DG H-A-M-I"), reconstruct the spelled letters into the proper name (e.g., Amirreza Sedghamiz).
+- NEVER say "I don't have memory of previous interactions" or claim you cannot remember earlier turns in this conversation.
+
+TOOL CALLING RULES:
+- Never request or attempt shell commands, external network connections, or administrative system changes.
+- When the user asks for their laptop battery status/percentage, system hardware summary, or current CPU/RAM load, respond ONLY with a single JSON object in this exact format and nothing else (NEVER invent or include a "result" field):
+{"action": "get_battery_status"}
+{"action": "get_system_status"}
+{"action": "get_resource_metrics"}
 """
 
 
@@ -49,9 +91,13 @@ class SafeToolRegistry:
             return {"battery_present": False, "percent": 100, "power_plugged": True}
         return {
             "battery_present": True,
-            "percent": battery.percent,
-            "power_plugged": battery.power_plugged,
-            "seconds_left": battery.secsleft if battery.secsleft != psutil.POWER_TIME_UNLIMITED else "unlimited",
+            "percent": round(battery.percent),
+            "power_plugged": bool(battery.power_plugged),
+            "seconds_left": (
+                battery.secsleft
+                if battery.secsleft not in (psutil.POWER_TIME_UNLIMITED, psutil.POWER_TIME_UNKNOWN)
+                else "unlimited"
+            ),
         }
 
     @staticmethod
@@ -61,6 +107,39 @@ class SafeToolRegistry:
             "cpu_percent": psutil.cpu_percent(interval=None),
             "virtual_memory_percent": psutil.virtual_memory().percent,
         }
+
+    @staticmethod
+    def format_tool_result(action_name: str, result: dict[str, Any]) -> str:
+        """Converts raw tool dictionary output into a natural spoken sentence."""
+        if action_name == "get_battery_status":
+            if not result.get("battery_present", True):
+                return "No battery was detected. Your system is running on direct AC power."
+            pct = result.get("percent", 0)
+            plugged = result.get("power_plugged", False)
+            state = "plugged into power" if plugged else "running on battery power"
+            secs = result.get("seconds_left")
+            if not plugged and isinstance(secs, (int, float)) and secs > 0:
+                mins = int(secs // 60)
+                return f"Your laptop battery is at {pct}% and {state}, with approximately {mins} minutes remaining."
+            return f"Your laptop battery is at {pct}% and {state}."
+
+        if action_name == "get_system_status":
+            return (
+                f"Your system status is {result.get('status', 'healthy')}. "
+                f"It has {result.get('cpu_count')} logical CPU cores, and memory usage is at "
+                f"{result.get('ram_used_gb')} gigabytes out of {result.get('ram_total_gb')} gigabytes "
+                f"({result.get('ram_percent')}%)."
+            )
+
+        if action_name == "get_resource_metrics":
+            return (
+                f"Current CPU load is {result.get('cpu_percent')}%, and RAM usage is at "
+                f"{result.get('virtual_memory_percent')}%."
+            )
+
+        # Fallback for any other tool
+        parts = [f"{k.replace('_', ' ')} is {v}" for k, v in result.items()]
+        return "Here is the requested information: " + ", ".join(parts) + "."
 
 
 class SafeAgentOrchestrator:
@@ -94,30 +173,33 @@ class SafeAgentOrchestrator:
         self.conversation_history.append({"role": "user", "content": user_text})
 
         # Generate response from local LLM
-        response_text, metrics = self.llm_client.chat_completion(self.conversation_history)
+        raw_response, metrics = self.llm_client.chat_completion(self.conversation_history)
+        response_text = strip_emojis(raw_response)
 
         proposed_action = None
         policy_decision = "PERMITTED"
         policy_reason = "Conversational output"
 
-        # Check if the model attempted a tool call formatted as JSON
+        # Check if the model attempted a tool call formatted as JSON (supports both "action" and "tool" keys)
         if "{" in response_text and "}" in response_text:
             try:
-                candidate = response_text[response_text.find("{"):response_text.rfind("}") + 1]
+                candidate = response_text[response_text.find("{") : response_text.rfind("}") + 1]
                 data = json.loads(candidate)
-                if "action" in data:
-                    proposed_action = data
-                    action_name = data.get("action", "")
-                    eval_result = self.policy_engine.evaluate(action_name, data.get("parameters"))
+                if isinstance(data, dict) and ("action" in data or "tool" in data):
+                    action_name = str(data.get("action") or data.get("tool") or "").strip()
+                    parameters = data.get("parameters") if isinstance(data.get("parameters"), dict) else None
+                    proposed_action = {"action": action_name, "parameters": parameters}
+
+                    eval_result = self.policy_engine.evaluate(action_name, parameters)
 
                     if eval_result.allowed:
                         policy_decision = "PERMITTED"
                         policy_reason = eval_result.reason
-                        # Execute safe tool
+                        # Execute real safe tool (ignoring any hallucinated "result" field from LLM)
                         tool_func = getattr(self.tools, action_name, None)
                         if tool_func:
                             tool_result = tool_func()
-                            response_text += f"\n\n[Tool Output ({action_name})]: {json.dumps(tool_result)}"
+                            response_text = self.tools.format_tool_result(action_name, tool_result)
                     else:
                         policy_decision = "BLOCKED"
                         policy_reason = eval_result.reason

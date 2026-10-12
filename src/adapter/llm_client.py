@@ -47,6 +47,7 @@ class LocalLlmClient:
             "temperature": temperature,
             "max_tokens": self.settings.governor.max_output_tokens,
             "stream": stream,
+            "chat_template_kwargs": {"enable_thinking": False},
         }
 
         metrics = InferenceMetrics()
@@ -61,7 +62,9 @@ class LocalLlmClient:
             data = resp.json()
 
             choice = data["choices"][0]
-            content = choice["message"]["content"]
+            content = choice["message"]["content"] or ""
+            if "<think>" in content and "</think>" in content:
+                content = content.split("</think>", 1)[-1].strip()
 
             usage = data.get("usage", {})
             metrics.prompt_tokens = usage.get("prompt_tokens", 0)
