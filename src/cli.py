@@ -54,7 +54,9 @@ def main():
     if args.cpu_only:
         settings.governor.gpu_layers = 0
 
-    # Initialize core reasoning & policy components
+    from src.memory.store import MemoryStore
+
+    # Initialize core reasoning, memory, & policy components
     governor = ResourceGovernor(settings.governor)
     server_mgr = LlamaServerManager(settings, governor=governor)
     governor.on_idle_timeout = server_mgr.stop
@@ -62,7 +64,14 @@ def main():
     client = LocalLlmClient(settings)
     policy_engine = PolicyEngine()
     audit_logger = AuditLogger(settings.log_dir)
-    orchestrator = SafeAgentOrchestrator(client, policy_engine, audit_logger, governor=governor)
+    memory_store = MemoryStore(settings.memory)
+    orchestrator = SafeAgentOrchestrator(
+        client,
+        policy_engine,
+        audit_logger,
+        governor=governor,
+        memory_store=memory_store,
+    )
 
     # Voice subsystem setup (if requested)
     voice_session = None
@@ -263,6 +272,7 @@ def main():
         print("\n[*] Shutting down...")
         if voice_session:
             voice_session.unload()
+        memory_store.close()
         governor.stop_idle_monitor()
         server_mgr.stop()
         print("[+] Assistant stopped cleanly.")

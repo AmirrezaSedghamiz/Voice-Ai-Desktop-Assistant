@@ -1,7 +1,7 @@
 """
 Policy Engine: Independently enforces permissions and boundaries.
 Treats model outputs as untrusted. Never allows prompt injection or untrusted text
-to grant shell execution, arbitrary file writes, or admin capabilities.
+to grant shell execution, arbitrary file writes, raw SQL access, or admin capabilities.
 """
 
 from typing import Any, NamedTuple
@@ -15,12 +15,16 @@ class PolicyDecision(NamedTuple):
 class PolicyEngine:
     """Independent policy validation gate."""
 
-    # Explicit whitelist of approved tool actions for the initial baseline
+    # Explicit whitelist of approved tool actions
     PERMITTED_ACTIONS = {
         "get_system_status",
         "get_battery_status",
         "get_resource_metrics",
         "diagnostic_echo",
+        "remember_fact",
+        "recall_facts",
+        "forget_fact",
+        "save_note",
     }
 
     FORBIDDEN_ACTIONS = {
@@ -32,6 +36,10 @@ class PolicyEngine:
         "write_system_file",
         "modify_registry",
         "access_internet",
+        "execute_sql",
+        "raw_sql",
+        "drop_table",
+        "delete_database",
     }
 
     def evaluate(self, action_name: str, parameters: dict[str, Any] | None = None) -> PolicyDecision:
@@ -39,8 +47,16 @@ class PolicyEngine:
         if not action_name:
             return PolicyDecision(allowed=True, reason="Conversational response only (no tool requested).")
 
-        # Explicit denial of destructive / unrestricted shell actions
-        if action_name in self.FORBIDDEN_ACTIONS or "shell" in action_name.lower() or "exec" in action_name.lower():
+        lower_name = action_name.lower()
+
+        # Explicit denial of destructive / unrestricted shell or raw SQL actions
+        if (
+            action_name in self.FORBIDDEN_ACTIONS
+            or "shell" in lower_name
+            or "exec" in lower_name
+            or "sql" in lower_name
+            or "drop_" in lower_name
+        ):
             return PolicyDecision(
                 allowed=False,
                 reason=f"Security Violation: '{action_name}' is forbidden by the local security policy.",

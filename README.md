@@ -4,11 +4,12 @@
 [![Hardware](https://img.shields.io/badge/GPU-RTX%203050%20Ti%20(4GB)-76B900?logo=nvidia)](docs/RESOURCE_BUDGET.md)
 [![Offline Security](https://img.shields.io/badge/Security-Genuine%20Offline%20Air--Gap-critical)](docs/SECURITY_AND_ISOLATION.md)
 [![Voice Pipeline](https://img.shields.io/badge/Voice-Whisper%20STT%20%2B%20Piper%20TTS-blueviolet)](docs/MODEL_EVALUATION.md)
-[![Tests](https://img.shields.io/badge/Tests-32%20Passed%20(100%25)-success)](tests/)
+[![Memory Store](https://img.shields.io/badge/Memory-SQLite%20%2B%20FTS5%20(0%20MB%20VRAM)-blue)](docs/MEMORY_ARCHITECTURE.md)
+[![Tests](https://img.shields.io/badge/Tests-47%20Passed%20(100%25)-success)](tests/)
 
 An enterprise-grade, resource-governed, and genuine offline desktop AI assistant engineered for Windows systems with constrained hardware (e.g., 4 GB laptop GPUs).
 
-Built with a modular Python architecture, high-performance CUDA `llama.cpp` inference, local CPU-based Speech-to-Text (`faster-whisper`), local neural Text-to-Speech (`piper-tts`), an independent Policy Engine, privacy-preserving audit logging, and strict operating-system-level firewall isolation.
+Built with a modular Python architecture, high-performance CUDA `llama.cpp` inference, local CPU-based Speech-to-Text (`faster-whisper`), local neural Text-to-Speech (`piper-tts`), a zero-VRAM persistent SQLite + FTS5 memory store (`src/memory/store.py`), an independent Policy Engine, privacy-preserving audit logging, and strict operating-system-level firewall isolation.
 
 ---
 
