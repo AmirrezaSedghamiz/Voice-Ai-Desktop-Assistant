@@ -138,3 +138,31 @@ nvidia-smi
   ```powershell
   powershell -ExecutionPolicy Bypass -File scripts\configure_firewall.ps1
   ```
+
+---
+
+### Scenario I: Microphone Access or Audio Device Disconnected
+* **Symptom:** Voice mode launches, but fails with `sounddevice.PortAudioError: Invalid number of channels` or `RuntimeError: No default input device`.
+* **Root Cause:** Windows Microphone Privacy Settings may have restricted desktop app access, or the laptop's internal microphone array is muted/disabled.
+* **Resolution:**
+  1. Open Windows Settings $\to$ Privacy & Security $\to$ Microphone. Ensure **"Let desktop apps access your microphone"** is set to **On**.
+  2. To list available hardware input devices:
+     ```powershell
+     & ".venv\Scripts\python.exe" -c "import sounddevice as sd; print(sd.query_devices())"
+     ```
+  3. You can specify a custom input or output device index in `AudioConfig` or via environment variables.
+
+---
+
+### Scenario J: Voice Models Missing or Corrupted
+* **Symptom:** Starting voice mode prints `[ERROR] Required voice models not found`.
+* **Root Cause:** The STT (`whisper-base`) or TTS (`en_US-lessac-medium`) models were not provisioned during setup.
+* **Resolution:**
+  Run the idempotent voice model downloader:
+  ```cmd
+  start.bat --download-voice
+  :: Or directly in PowerShell:
+  & ".venv\Scripts\python.exe" scripts\download_assets.py --voice
+  ```
+  The script will verify existing files and download any missing models with cryptographic SHA-256 checks.
+

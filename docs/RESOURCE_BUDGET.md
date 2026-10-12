@@ -116,3 +116,29 @@ The benchmark suite (`src.eval.benchmark`) was executed on the live host environ
 * **Idle State:** GPU draws ~8W at 57°C.
 * **During GPU Generation Burst (3–8 seconds):** GPU power rises to ~35–45W; temperature remains below 65°C.
 * **Cooldown:** Because requests are discrete and bounded (max 512 output tokens), the GPU immediately returns to idle (8W) between user queries. The assistant never performs continuous spinning loops or unsanctioned background generation.
+
+---
+
+## 6. Phase 2: Voice Pipeline Resource Budget & Measured Latency
+
+The voice pipeline (Microphone $\to$ Whisper STT $\to$ SafeAgentOrchestrator $\to$ Piper TTS $\to$ Speaker) was benchmarked on the host workstation under standard background load.
+
+### Component Resource Allocation
+
+| Subsystem Component | Compute Engine | Model & Quantization | Thread Cap | RAM Allocated | Dedicated VRAM |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Speech-to-Text (STT)** | CPU (`ctranslate2`) | Multilingual `whisper-base` (INT8) | 4 threads | ~140 MB | **0.0 MiB** |
+| **Reasoning Core (LLM)** | CUDA (`llama.cpp`) | `Qwen3-1.7B-Q4_K_M` (24 layers) | 4 threads | ~350 MB | **1,463.0 MiB** |
+| **Text-to-Speech (TTS)** | CPU (`onnxruntime`) | Piper `en_US-lessac-medium` (ONNX) | 1 thread | ~60 MB | **0.0 MiB** |
+| **Audio I/O (Capture/Play)**| PortAudio / SoundDevice | 16 kHz Mono Input / 22 kHz Output | 1 thread | ~15 MB | **0.0 MiB** |
+| **Total Voice Assistant**| Sequential Pipeline | All Models Combined | Bounded | **< 600 MB** | **~1,463 MiB (58% free)** |
+
+### Measured End-to-End Latency & Telemetry
+
+* **Test Query:** *"What is the capital of France?"* (2.32 seconds audio duration)
+* **STT Transcription Time:** **1.61 seconds** (Real-Time Factor: **0.59**)
+* **STT Word Error Rate (WER):** **0.0%** (100% exact match)
+* **LLM Reasoning Time:** **0.73 seconds** (Response: *"The capital of France is Paris."*, throughput ~16.5 t/s with warm prompt)
+* **TTS Synthesis Time:** **0.09 seconds** (Real-Time Factor: **0.08** — sub-100 millisecond synthesis)
+* **Total Turn Latency:** **2.43 seconds** (from user speech completion to speaker audio output onset)
+

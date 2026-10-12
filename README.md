@@ -3,44 +3,59 @@
 [![Windows 11](https://img.shields.io/badge/Platform-Windows%2011%20x64-0078D6?logo=windows)](docs/ENVIRONMENT_AUDIT.md)
 [![Hardware](https://img.shields.io/badge/GPU-RTX%203050%20Ti%20(4GB)-76B900?logo=nvidia)](docs/RESOURCE_BUDGET.md)
 [![Offline Security](https://img.shields.io/badge/Security-Genuine%20Offline%20Air--Gap-critical)](docs/SECURITY_AND_ISOLATION.md)
-[![Model](https://img.shields.io/badge/Model-Qwen3--1.7B%20Q4__K__M-blueviolet)](docs/MODEL_EVALUATION.md)
-[![Tests](https://img.shields.io/badge/Tests-12%20Passed%20(100%25)-success)](tests/)
+[![Voice Pipeline](https://img.shields.io/badge/Voice-Whisper%20STT%20%2B%20Piper%20TTS-blueviolet)](docs/MODEL_EVALUATION.md)
+[![Tests](https://img.shields.io/badge/Tests-32%20Passed%20(100%25)-success)](tests/)
 
-An enterprise-grade, resource-governed, and genuine offline desktop AI assistant foundation engineered for Windows systems with constrained hardware (e.g., 4 GB laptop GPUs).
+An enterprise-grade, resource-governed, and genuine offline desktop AI assistant engineered for Windows systems with constrained hardware (e.g., 4 GB laptop GPUs).
 
-Built with a modular Python architecture, high-performance CUDA `llama.cpp` inference, an independent Policy Engine, privacy-preserving audit logging, and strict operating-system-level firewall isolation.
+Built with a modular Python architecture, high-performance CUDA `llama.cpp` inference, local CPU-based Speech-to-Text (`faster-whisper`), local neural Text-to-Speech (`piper-tts`), an independent Policy Engine, privacy-preserving audit logging, and strict operating-system-level firewall isolation.
 
 ---
 
-## Key Architectural Principles
+## Cascaded Voice Architecture & Key Principles
 
 ```
   ┌────────────────────────────────────────────────────────────────────────┐
-  │                         User Interface Layer                           │
-  │                  Interactive CLI / Future Voice Pipeline               │
-  └───────────────────────────────────┬────────────────────────────────────┘
-                                      │
-  ┌───────────────────────────────────▼────────────────────────────────────┐
+  │                           User Interaction                             │
+  │     Microphone (Push-to-Talk / VAD)    │     Speaker Output            │
+  └──────────────────┬─────────────────────┴─────────────▲─────────────────┘
+                     │                                   │
+                     ▼                                   │
+  ┌──────────────────────────────────────┐               │
+  │     Local Whisper STT (CPU INT8)     │               │
+  │  - Faster-Whisper Multilingual Base  │               │
+  │  - 0 MB VRAM, 4 threads, ~140 MB RAM │               │
+  └──────────────────┬───────────────────┘               │
+                     │ (Transcribed Text)                │
+                     ▼                                   │
+  ┌──────────────────────────────────────────────────────┴─────────────────┐
   │                         Orchestrator Engine                            │
   │     - Session State Management         - Concurrency Gate (max=1)      │
   │     - Resource Governor (below-normal) - Idle Watchdog (300s timeout)  │
-  └───────────────────┬───────────────────────────────┬────────────────────┘
-                      │                               │
-                      ▼                               ▼
+  └──────────────────┬───────────────────────────────┬─────────────────────┘
+                     │                               │
+                     ▼                               ▼
   ┌──────────────────────────────────────┐   ┌─────────────────────────────┐
   │         Policy Engine & Safety       │   │     Audit & Redaction Log   │
-  │  - Whitelisted structured actions    │   │  - Local SQLite / file log  │
+  │  - Whitelisted structured actions    │   │  - Local file log           │
   │  - Rejects arbitrary shell/CMD       │   │  - Regex token/key scrub    │
   │  - Zero privilege escalation         │   │  - User privacy guaranteed  │
-  └───────────────────┬──────────────────┘   └─────────────────────────────┘
-                      │
-  ┌───────────────────▼────────────────────────────────────────────────────┐
+  └──────────────────┬───────────────────┘   └─────────────────────────────┘
+                     │                               ▲
+                     ▼                               │ (Final Response)
+  ┌──────────────────────────────────────────────────┴─────────────────────┐
   │                      Offline Local Inference Layer                     │
   │  - llama.cpp CUDA Server (Loopback 127.0.0.1:8080)                    │
-  │  - Windows Defender Firewall Outbound Egress Block                     │
   │  - Qwen3-1.7B-Q4_K_M (1.46 GB VRAM, ~62 tokens/s generation)           │
   │  - CPU-only Fallback Mode (0 MB VRAM, ~19 tokens/s generation)         │
-  └────────────────────────────────────────────────────────────────────────┘
+  └──────────────────┬─────────────────────────────────────────────────────┘
+                     │ (Generated Response)
+                     ▼
+  ┌──────────────────────────────────────┐
+  │      Local Piper TTS (CPU ONNX)      │
+  │  - en_US-lessac-medium neural voice  │
+  │  - 0 MB VRAM, RTF < 0.10, ~60 MB RAM ├───────────────┘
+  └──────────────────────────────────────┘
 ```
 
 1. **Genuine Offline Isolation:** No remote AI inference APIs, zero update checkers, and OS-level Windows Firewall outbound rules blocking all network egress.
@@ -62,6 +77,8 @@ Tested and benchmarked on a production Windows 11 mobile workstation:
 | **Dedicated GPU** | NVIDIA GeForce RTX 3050 Ti Laptop GPU (4 GB VRAM) | Consumes **~1,463 MiB VRAM**; leaves **> 2.4 GB free** |
 | **Inference Runtime** | `llama.cpp` Windows CUDA build b11429 | Native CUDA acceleration with CPU fallback (`-ngl 0`) |
 | **Primary Model** | `Qwen3-1.7B-Q4_K_M.gguf` (SHA-256 verified) | **60.5 – 63.5 tokens/sec** prompt generation speed |
+| **STT Runtime** | `faster-whisper` Multilingual Base (CPU INT8) | **0 MB VRAM**, ~1.6s latency, 0% Word Error Rate |
+| **TTS Runtime** | `piper-tts` ONNX `en_US-lessac-medium` (CPU) | **0 MB VRAM**, ~0.09s latency, RTF < 0.10 |
 
 ---
 
@@ -78,10 +95,14 @@ start.bat
 
 #### Available Modes:
 ```cmd
-start.bat                  :: Starts the interactive CLI Assistant
+start.bat                  :: Starts the interactive text CLI
+start.bat --voice          :: Starts interactive VOICE mode (Push-to-Talk)
+start.bat --voice --trigger-mode vad :: Starts VOICE mode with continuous VAD
+start.bat --voice --no-tts :: Voice input (STT) with text-only responses
+start.bat --download-voice :: Pre-provisions local STT and TTS models
 start.bat --low-resource   :: Starts with throttled CPU threads and reduced GPU layers
 start.bat --benchmark      :: Executes automated hardware & bilingual benchmarks
-start.bat --test           :: Executes the 12-test unit test suite
+start.bat --test           :: Executes the 32-test unit test suite
 start.bat --docker         :: Runs the assistant inside Docker with mounted volumes
 ```
 

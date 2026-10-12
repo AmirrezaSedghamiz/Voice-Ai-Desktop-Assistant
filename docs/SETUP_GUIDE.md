@@ -30,10 +30,14 @@ start.bat
 
 ### Available Launcher Modes
 ```cmd
-start.bat                  :: Starts the interactive Assistant CLI
+start.bat                  :: Starts the interactive Assistant text CLI
+start.bat --voice          :: Starts interactive VOICE mode (Push-to-Talk)
+start.bat --voice --trigger-mode vad :: Starts VOICE mode with continuous VAD
+start.bat --voice --no-tts :: Voice input (STT) with text-only responses
+start.bat --download-voice :: Pre-provisions local STT and TTS models
 start.bat --low-resource   :: Starts with throttled CPU threads and reduced GPU layers
 start.bat --benchmark      :: Executes the automated latency & resource benchmark
-start.bat --test           :: Executes the 12-test unit test suite
+start.bat --test           :: Executes the 32-test unit test suite
 start.bat --docker         :: Launches the containerized environment via Docker Compose
 ```
 
