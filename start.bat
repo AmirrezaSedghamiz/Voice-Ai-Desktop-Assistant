@@ -88,6 +88,26 @@ if "%1"=="--low-resource" (
     goto :end
 )
 
+if "%1"=="--voice" (
+    echo [*] Checking local voice models...
+    set "NEED_VOICE=0"
+    if not exist "models\tts\en_US-lessac-medium.onnx" set "NEED_VOICE=1"
+    if not exist "models\stt\whisper-base\model.bin" set "NEED_VOICE=1"
+    if "!NEED_VOICE!"=="1" (
+        echo [*] Voice models missing. Running voice asset downloader...
+        .venv\Scripts\python.exe scripts\download_assets.py --voice
+    )
+    echo [*] Starting Assistant in VOICE mode...
+    .venv\Scripts\python.exe -m src.cli %*
+    goto :end
+)
+
+if "%1"=="--download-voice" (
+    echo [*] Downloading and verifying all local voice models...
+    .venv\Scripts\python.exe scripts\download_assets.py --voice
+    goto :end
+)
+
 REM Default: Interactive CLI
 echo [*] Starting Assistant Interactive CLI...
 .venv\Scripts\python.exe -m src.cli %*
