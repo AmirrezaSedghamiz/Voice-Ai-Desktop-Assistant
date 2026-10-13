@@ -71,5 +71,6 @@ data/*.db-shm
 data/*.sqlite*
 data/ui_settings.json
 data/audit/
+data/quality_lab/
 !data/.gitkeep
 

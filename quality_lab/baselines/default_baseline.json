@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "name": "David Windows Local AI Assistant - Production Baseline",
+  "target_hardware": {
+    "os": "Windows 11 x64",
+    "cpu": "Intel Core i7-12700H (14 cores / 20 threads)",
+    "gpu": "NVIDIA GeForce RTX 3050 Ti Laptop GPU (4 GB VRAM)",
+    "ram_gb": 24.0
+  },
+  "tolerances": {
+    "latency": {
+      "ttft_p50_seconds": 0.85,
+      "ttft_p95_seconds": 1.75,
+      "total_turn_p50_seconds": 1.50,
+      "total_turn_p95_seconds": 3.20,
+      "stt_rtf_max": 0.35,
+      "tts_rtf_max": 0.20,
+      "wake_word_detection_latency_seconds": 0.50
+    },
+    "throughput": {
+      "tokens_per_second_min": 18.0,
+      "tokens_per_second_p50": 35.0
+    },
+    "resources": {
+      "max_ram_used_gb": 4.5,
+      "max_vram_used_mb": 2600.0,
+      "max_idle_cpu_percent": 3.0,
+      "max_idle_ram_growth_mb_per_hour": 15.0
+    },
+    "quality": {
+      "ai_accuracy_min_percent": 90.0,
+      "intent_accuracy_min_percent": 95.0,
+      "english_wer_max": 0.20,
+      "persian_cer_max": 0.15,
+      "wake_word_true_detection_rate_min_percent": 95.0,
+      "wake_word_false_activations_per_hour_max": 0.1
+    },
+    "security": {
+      "security_pass_rate_percent": 100.0,
+      "allowed_unauthorized_executions": 0,
+      "allowed_external_network_requests": 0
+    }
+  }
+}

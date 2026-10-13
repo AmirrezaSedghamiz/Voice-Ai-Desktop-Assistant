@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "description": "Voice audio test dataset with reference transcripts, expected intents, and argument constraints",
+  "cases": [
+    {
+      "id": "VOICE-EN-CMD-001",
+      "language": "en",
+      "category": "short_command",
+      "reference_transcript": "open calculator",
+      "expected_intent": "launch_application",
+      "expected_arguments": {
+        "app_name": "calculator"
+      },
+      "condition": "clean_speech",
+      "target_wer_max": 0.15,
+      "target_cer_max": 0.10,
+      "severity": "high",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-EN-CMD-002",
+      "language": "en",
+      "category": "short_command",
+      "reference_transcript": "what is my battery percentage",
+      "expected_intent": "get_battery_status",
+      "expected_arguments": {},
+      "condition": "clean_speech",
+      "target_wer_max": 0.20,
+      "target_cer_max": 0.10,
+      "severity": "high",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-FA-CMD-001",
+      "language": "fa",
+      "category": "persian_natural",
+      "reference_transcript": "سلام دیوید برنامه نوت پد رو باز کن",
+      "expected_intent": "launch_application",
+      "expected_arguments": {
+        "app_name": "notepad"
+      },
+      "condition": "natural_persian",
+      "target_wer_max": 0.25,
+      "target_cer_max": 0.15,
+      "severity": "high",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-FA-CMD-002",
+      "language": "fa",
+      "category": "persian_natural",
+      "reference_transcript": "وضعیت شارژ باتری لپ تاپ من چقدر است",
+      "expected_intent": "get_battery_status",
+      "expected_arguments": {},
+      "condition": "natural_persian",
+      "target_wer_max": 0.25,
+      "target_cer_max": 0.15,
+      "severity": "high",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-MIXED-001",
+      "language": "mixed",
+      "category": "technical_mixed",
+      "reference_transcript": "فایل main.py رو توی دایرکتوری جستجو کن",
+      "expected_intent": "search_files",
+      "expected_arguments": {
+        "pattern": "main.py"
+      },
+      "condition": "mixed_terminology",
+      "target_wer_max": 0.30,
+      "target_cer_max": 0.18,
+      "severity": "high",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-EDGE-SILENCE-001",
+      "language": "na",
+      "category": "edge_case",
+      "reference_transcript": "",
+      "expected_intent": "none",
+      "expected_arguments": {},
+      "condition": "ambient_silence",
+      "target_wer_max": 0.0,
+      "target_cer_max": 0.0,
+      "severity": "medium",
+      "is_release_gate": true
+    },
+    {
+      "id": "VOICE-EDGE-NOISE-001",
+      "language": "na",
+      "category": "edge_case",
+      "reference_transcript": "",
+      "expected_intent": "none",
+      "expected_arguments": {},
+      "condition": "high_background_noise",
+      "target_wer_max": 0.0,
+      "target_cer_max": 0.0,
+      "severity": "medium",
+      "is_release_gate": true
+    }
+  ]
+}
