@@ -61,3 +61,10 @@ models/stt/
 scratch/
 logs/
 *.log
+
+# Local databases & application data
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite*
+!data/.gitkeep

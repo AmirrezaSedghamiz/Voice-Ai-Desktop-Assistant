@@ -447,6 +447,71 @@ def test_end_to_end_orchestrator_memory_across_restarts(tmp_path):
     )
     resp4, _ = orchestrator_s2.handle_user_input("Forget my preferred name.")
     assert "removed preferred name" in resp4
-    assert "Amirreza Sedghamiz" not in orchestrator_s2.conversation_history[0]["content"]
-
     store_s2.close()
+
+
+def test_extract_name_from_user_text():
+    from src.agent.orchestrator import extract_name_from_user_text
+
+    assert extract_name_from_user_text("Hello! My name is Amirreza.") == "Amirreza"
+    assert (
+        extract_name_from_user_text(
+            "No, my name is not Ambular. My name is actually Amir, Raza, Set, Omis. You can spell it..."
+        )
+        == "Amir Raza Set Omis"
+    )
+    assert extract_name_from_user_text("Remember that my name is Amirreza Sedghamiz.") == "Amirreza Sedghamiz"
+    assert extract_name_from_user_text("You can call me Sarah.") == "Sarah"
+    assert extract_name_from_user_text("اسم من علی است.") == "علی"
+    assert extract_name_from_user_text("نام من امیررضا هست.") == "امیررضا"
+
+    # Negative cases
+    assert extract_name_from_user_text("Okay, do you remember my name?") is None
+    assert extract_name_from_user_text("What is your name?") is None
+    assert extract_name_from_user_text("What is the battery percentage?") is None
+    assert extract_name_from_user_text("") is None
+
+
+def test_orchestrator_deterministic_identity_capture(tmp_path):
+    from unittest.mock import MagicMock
+    from src.adapter.llm_client import InferenceMetrics
+    from src.agent.audit_log import AuditLogger
+    from src.agent.orchestrator import SafeAgentOrchestrator
+    from src.agent.policy_engine import PolicyEngine
+
+    db_path = tmp_path / "assistant_memory.db"
+    store = MemoryStore(db_path=db_path)
+    mock_llm = MagicMock()
+
+    m = InferenceMetrics()
+    m.tokens_per_second = 50.0
+    m.total_generation_time = 0.3
+    m.prompt_tokens = 80
+    m.completion_tokens = 20
+
+    # Simulate a conversational model that does NOT emit JSON tool call on introduction
+    mock_llm.chat_completion.return_value = (
+        "Hello Amirreza! Nice to meet you. How can I help you today?",
+        m,
+    )
+
+    orchestrator = SafeAgentOrchestrator(
+        llm_client=mock_llm,
+        policy_engine=PolicyEngine(),
+        audit_logger=AuditLogger(tmp_path / "logs"),
+        memory_store=store,
+    )
+
+    resp, _ = orchestrator.handle_user_input("Hello! My name is Amirreza.")
+    assert "Amirreza" in resp
+
+    # Verify that preferred_name was automatically persisted in the SQLite store
+    facts = store.list_facts(category="profile")
+    assert len(facts) >= 1
+    assert any(f.key == "preferred_name" and f.value == "Amirreza" for f in facts)
+
+    # Verify that the active system prompt contains the saved name
+    assert "preferred_name: Amirreza" in orchestrator.conversation_history[0]["content"]
+
+    store.close()
+

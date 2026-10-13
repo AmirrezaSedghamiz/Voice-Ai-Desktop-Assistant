@@ -155,7 +155,7 @@ def main():
                     rec_thread = threading.Thread(target=do_ptt_record, daemon=True)
                     rec_thread.start()
 
-                    print("[*] [MIC RECORDING...] Speak now. Press [Enter] when done > ", end="", flush=True)
+                    print("[*] [MIC RECORDING...] Speak now (take your time). Press [Enter] when done > ", end="", flush=True)
                     try:
                         input()
                     except (KeyboardInterrupt, EOFError):

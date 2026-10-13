@@ -102,8 +102,8 @@ class WhisperSttEngine:
                     is_empty=True,
                 )
             # Energy/silence check
-            rms = np.sqrt(np.mean(audio**2))
-            if rms < 0.001:
+            rms = float(np.sqrt(np.mean(audio**2)))
+            if rms < 0.0005:
                 return TranscriptionResult(
                     text="",
                     language="silence",
@@ -114,20 +114,39 @@ class WhisperSttEngine:
                     is_empty=True,
                 )
 
+            # Peak normalization to ensure clear signal across long multi-clause utterances
+            if getattr(self.config, "stt_normalize_audio", True):
+                peak = float(np.max(np.abs(audio)))
+                if peak > 0.005:
+                    audio = (audio / peak) * 0.95
+
         target_lang = language or self.config.stt_language
 
         with self._lock:
             start_time = time.time()
             try:
+                vad_filter = getattr(self.config, "stt_vad_filter", True)
+                vad_params = (
+                    dict(
+                        threshold=getattr(self.config, "stt_vad_threshold", 0.25),
+                        min_silence_duration_ms=getattr(self.config, "stt_vad_min_silence_ms", 1500),
+                        speech_pad_ms=getattr(self.config, "stt_vad_speech_pad_ms", 400),
+                    )
+                    if vad_filter
+                    else None
+                )
+
                 segments, info = self._model.transcribe(
                     audio,
                     beam_size=5,
                     language=target_lang,
-                    vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500),
+                    vad_filter=vad_filter,
+                    vad_parameters=vad_params,
+                    condition_on_previous_text=getattr(self.config, "stt_condition_on_previous_text", False),
+                    no_speech_threshold=0.6,
                 )
 
-                collected_text = " ".join([seg.text.strip() for seg in segments]).strip()
+                collected_text = " ".join([seg.text.strip() for seg in segments if seg.text.strip()]).strip()
                 transcribe_duration = time.time() - start_time
                 audio_duration = info.duration if hasattr(info, "duration") else 0.0
                 rtf = transcribe_duration / audio_duration if audio_duration > 0 else 0.0

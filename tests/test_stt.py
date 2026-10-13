@@ -101,3 +101,34 @@ def test_stt_mock_persian_transcribe():
     assert result.language == "fa"
     mock_model.transcribe.assert_called_once()
     assert mock_model.transcribe.call_args[1]["language"] == "fa"
+
+
+def test_stt_long_utterance_multi_segment():
+    config = AudioConfig(max_recording_seconds=120)
+    stt = WhisperSttEngine(config)
+
+    mock_model = MagicMock()
+    # Simulate 3 sequential clauses across a 40-second utterance
+    seg1 = MagicMock(text="This is clause one of a long thought.")
+    seg2 = MagicMock(text="Here is clause two after a thinking pause.")
+    seg3 = MagicMock(text="And finally clause three finishes the entire sentence.")
+    info = MagicMock(language="en", language_probability=0.98, duration=42.0)
+
+    mock_model.transcribe.return_value = ([seg1, seg2, seg3], info)
+    stt._model = mock_model
+    stt._is_loaded = True
+
+    # 40 seconds of mock audio with low gain
+    long_audio = np.ones(16000 * 40, dtype=np.float32) * 0.02
+    result = stt.transcribe(long_audio)
+
+    assert result.is_empty is False
+    assert "clause one" in result.text
+    assert "clause two" in result.text
+    assert "clause three" in result.text
+    assert result.duration_seconds == 42.0
+    # Ensure condition_on_previous_text was set to False to prevent hallucination cascades
+    assert mock_model.transcribe.call_args[1]["condition_on_previous_text"] is False
+    # Ensure vad_parameters was passed with gentle silence duration
+    assert mock_model.transcribe.call_args[1]["vad_parameters"]["min_silence_duration_ms"] == 1500
+

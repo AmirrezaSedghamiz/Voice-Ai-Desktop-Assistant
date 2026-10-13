@@ -21,6 +21,18 @@ class AudioConfig(BaseModel):
     stt_sample_rate: int = Field(default=16000, description="Audio capture sampling rate (Hz) for STT.")
     stt_threads: int = Field(default=4, ge=1, le=8, description="CPU threads for Whisper transcription.")
     stt_language: str | None = Field(default=None, description="Language code (e.g., 'en', 'fa') or None for auto-detect.")
+    stt_vad_filter: bool = Field(default=True, description="Enable VAD pre-filtering in faster-whisper.")
+    stt_vad_threshold: float = Field(default=0.25, ge=0.05, le=0.9, description="Speech onset threshold (lower preserves quieter clauses).")
+    stt_vad_min_silence_ms: int = Field(default=1500, ge=300, le=5000, description="Silence duration before splitting speech chunks in STT.")
+    stt_vad_speech_pad_ms: int = Field(default=400, ge=100, le=1000, description="Padding on speech boundaries to avoid clipping words.")
+    stt_condition_on_previous_text: bool = Field(
+        default=False,
+        description="Disabled by default to prevent hallucination cascades and dropped sentences in long speech.",
+    )
+    stt_normalize_audio: bool = Field(
+        default=True,
+        description="Peak normalize audio buffer before transcription for consistent volume and SNR.",
+    )
 
     # TTS Settings
     tts_enabled: bool = Field(default=True, description="Enable local text-to-speech output.")
@@ -42,6 +54,6 @@ class AudioConfig(BaseModel):
         default="ptt",
         description="Voice trigger mode: 'ptt' (Push-to-Talk) or 'vad' (Voice Activity Detection).",
     )
-    max_recording_seconds: int = Field(default=30, ge=3, le=120, description="Maximum recording duration in seconds.")
-    vad_silence_duration_ms: int = Field(default=800, ge=300, le=3000, description="Silence duration to end utterance in VAD mode.")
+    max_recording_seconds: int = Field(default=120, ge=1, le=300, description="Maximum recording duration in seconds (2 minutes).")
+    vad_silence_duration_ms: int = Field(default=1800, ge=500, le=5000, description="Silence duration to end utterance in VAD mode (1.8s).")
     vad_energy_threshold: float = Field(default=0.015, ge=0.001, le=0.5, description="RMS energy threshold for speech onset.")

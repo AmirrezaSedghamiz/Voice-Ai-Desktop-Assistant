@@ -19,7 +19,7 @@ def test_audio_config_defaults():
     assert config.stt_sample_rate == 16000
     assert config.tts_sample_rate == 22050
     assert config.trigger_mode == "ptt"
-    assert config.max_recording_seconds == 30
+    assert config.max_recording_seconds == 120
 
 
 def test_tts_text_sanitization():
