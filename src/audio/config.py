@@ -20,7 +20,14 @@ class AudioConfig(BaseModel):
     )
     stt_sample_rate: int = Field(default=16000, description="Audio capture sampling rate (Hz) for STT.")
     stt_threads: int = Field(default=4, ge=1, le=8, description="CPU threads for Whisper transcription.")
-    stt_language: str | None = Field(default=None, description="Language code (e.g., 'en', 'fa') or None for auto-detect.")
+    stt_language: str | None = Field(
+        default="fa",
+        description="Language code (e.g., 'fa', 'en') or None/'auto' for auto-detect. Defaults to Persian ('fa').",
+    )
+    stt_initial_prompt: str | None = Field(
+        default="سلام، دستیار صوتی ویندوز.",
+        description="Initial prompt context to bias Persian vocabulary and orthography.",
+    )
     stt_vad_filter: bool = Field(default=True, description="Enable VAD pre-filtering in faster-whisper.")
     stt_vad_threshold: float = Field(default=0.25, ge=0.05, le=0.9, description="Speech onset threshold (lower preserves quieter clauses).")
     stt_vad_min_silence_ms: int = Field(default=1500, ge=300, le=5000, description="Silence duration before splitting speech chunks in STT.")

@@ -120,7 +120,16 @@ class WhisperSttEngine:
                 if peak > 0.005:
                     audio = (audio / peak) * 0.95
 
-        target_lang = language or self.config.stt_language
+        target_lang = language if language is not None else self.config.stt_language
+        if isinstance(target_lang, str) and target_lang.lower() in ("auto", "none", ""):
+            target_lang = None
+
+        # Bias Persian vocabulary and orthography if target language is 'fa'
+        initial_prompt = (
+            getattr(self.config, "stt_initial_prompt", None)
+            if target_lang == "fa"
+            else None
+        )
 
         with self._lock:
             start_time = time.time()
@@ -140,9 +149,11 @@ class WhisperSttEngine:
                     audio,
                     beam_size=5,
                     language=target_lang,
+                    task="transcribe",
                     vad_filter=vad_filter,
                     vad_parameters=vad_params,
                     condition_on_previous_text=getattr(self.config, "stt_condition_on_previous_text", False),
+                    initial_prompt=initial_prompt,
                     no_speech_threshold=0.6,
                 )
 

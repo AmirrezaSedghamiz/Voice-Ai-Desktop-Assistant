@@ -16,7 +16,8 @@ def test_stt_config_defaults():
     assert config.stt_enabled is True
     assert config.stt_sample_rate == 16000
     assert config.stt_threads == 4
-    assert config.stt_language is None
+    assert config.stt_language == "fa"
+    assert config.stt_initial_prompt is not None
 
 
 def test_stt_empty_audio_buffer():
@@ -101,6 +102,30 @@ def test_stt_mock_persian_transcribe():
     assert result.language == "fa"
     mock_model.transcribe.assert_called_once()
     assert mock_model.transcribe.call_args[1]["language"] == "fa"
+    assert mock_model.transcribe.call_args[1]["task"] == "transcribe"
+    assert mock_model.transcribe.call_args[1]["initial_prompt"] == config.stt_initial_prompt
+
+
+def test_stt_language_auto_and_override():
+    config = AudioConfig(stt_language="fa")
+    stt = WhisperSttEngine(config)
+
+    mock_model = MagicMock()
+    mock_info = MagicMock(language="en", language_probability=0.99, duration=1.0)
+    mock_model.transcribe.return_value = ([MagicMock(text="test")], mock_info)
+    stt._model = mock_model
+    stt._is_loaded = True
+
+    dummy_audio = np.ones(16000, dtype=np.float32) * 0.1
+
+    # Override with auto
+    stt.transcribe(dummy_audio, language="auto")
+    assert mock_model.transcribe.call_args[1]["language"] is None
+
+    # Override with en
+    stt.transcribe(dummy_audio, language="en")
+    assert mock_model.transcribe.call_args[1]["language"] == "en"
+    assert mock_model.transcribe.call_args[1]["initial_prompt"] is None
 
 
 def test_stt_long_utterance_multi_segment():

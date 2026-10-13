@@ -469,6 +469,9 @@ def test_extract_name_from_user_text():
     assert extract_name_from_user_text("Okay, do you remember my name?") is None
     assert extract_name_from_user_text("What is your name?") is None
     assert extract_name_from_user_text("What is the battery percentage?") is None
+    assert extract_name_from_user_text("اسم من چیه؟") is None
+    assert extract_name_from_user_text("نام من چیست؟") is None
+    assert extract_name_from_user_text("اسم من یادته؟") is None
     assert extract_name_from_user_text("") is None
 
 

@@ -54,15 +54,21 @@ def extract_name_from_user_text(text: str) -> str | None:
     if not text or not isinstance(text, str):
         return None
 
-    # Persian patterns: "اسم من ... است/هست", "نام من ... است/هست"
+    # Exclude questions about identity (e.g., "اسم من چیه؟", "نام من چیست؟", "what is my name?")
+    question_markers = ("چیه", "چیست", "چی بود", "چی هست", "کیه", "کیست", "یادته", "میدونی", "می‌دونی", "؟", "?")
+    if any(q in text for q in question_markers):
+        if any(w in text.lower() for w in ("اسم", "نام", "name", "who am i", "what")):
+            return None
+
+    # Persian patterns: "اسم من ... است/هست", "نام من ... است/هست", "اسمم ... است/هست"
     fa_match = re.search(
-        r"(?:اسم من|نام من)\s+([A-Za-z\u0600-\u06FF\s]+?)(?:\s+(?:است|هست)|[\.!\?،,]|$)",
+        r"(?:اسم من|نام من|اسمم)\s+([A-Za-z\u0600-\u06FF\s]+?)(?:\s+(?:است|هست|هستم|می‌باشد|میباشد)|[\.!\?،,]|$)",
         text,
         re.IGNORECASE,
     )
     if fa_match:
         name = fa_match.group(1).strip()
-        if name and len(name) < 50:
+        if name and name not in ("چی", "چیه", "چیست", "کی", "کیه", "چیزی") and len(name) < 50:
             return name
 
     # English patterns - prioritize corrections and direct statements
@@ -77,7 +83,7 @@ def extract_name_from_user_text(text: str) -> str | None:
             # Clean comma-separated tokens often produced by voice STT
             cleaned = re.sub(r"[,]+", " ", name_raw)
             cleaned = re.sub(r"\s+", " ", cleaned).strip()
-            if cleaned and not cleaned.lower().startswith(("not ", "no ", "a user", "trying")):
+            if cleaned and not cleaned.lower().startswith(("not ", "no ", "a user", "trying", "what", "who")):
                 words = cleaned.split()
                 if 1 <= len(words) <= 6:
                     return cleaned
@@ -424,17 +430,33 @@ class SafeAgentOrchestrator:
             try:
                 candidate = response_text[response_text.find("{") : response_text.rfind("}") + 1]
                 data = json.loads(candidate)
-                if isinstance(data, dict) and ("action" in data or "tool" in data):
+                if isinstance(data, dict):
                     action_name = str(data.get("action") or data.get("tool") or "").strip()
-                    if isinstance(data.get("parameters"), dict):
-                        parameters = dict(data["parameters"])
-                    else:
-                        # Support flattened arguments from compact models (excluding meta keys)
-                        parameters = {
-                            k: v
-                            for k, v in data.items()
-                            if k not in ("action", "tool", "result", "parameters")
-                        }
+                    if not action_name:
+                        before_brace = response_text[: response_text.find("{")].strip()
+                        for known_action in (
+                            "recall_facts",
+                            "remember_fact",
+                            "forget_fact",
+                            "save_note",
+                            "get_battery_status",
+                            "get_system_status",
+                            "get_resource_metrics",
+                        ):
+                            if known_action in before_brace:
+                                action_name = known_action
+                                break
+
+                    if action_name:
+                        if isinstance(data.get("parameters"), dict):
+                            parameters = dict(data["parameters"])
+                        else:
+                            # Support flattened arguments from compact models (excluding meta keys)
+                            parameters = {
+                                k: v
+                                for k, v in data.items()
+                                if k not in ("action", "tool", "result", "parameters")
+                            }
 
                     # Redact full memory values in audit log records per privacy policy
                     audit_params = dict(parameters) if parameters else None

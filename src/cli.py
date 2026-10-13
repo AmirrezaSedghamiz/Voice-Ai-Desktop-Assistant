@@ -17,7 +17,7 @@ from src.core.config import get_default_settings
 from src.core.governor import ResourceGovernor
 
 
-def print_banner(settings, telemetry, voice_enabled=False, trigger_mode="ptt"):
+def print_banner(settings, telemetry, voice_enabled=False, trigger_mode="ptt", language="fa"):
     print("=================================================================")
     print("      Resource-Constrained Desktop AI Assistant (Offline)        ")
     print("=================================================================")
@@ -28,6 +28,9 @@ def print_banner(settings, telemetry, voice_enabled=False, trigger_mode="ptt"):
     print(f"  Context Window:  {settings.governor.max_context_tokens} tokens")
     print(f"  Process Priority:{settings.governor.process_priority}")
     print(f"  Mode:            {'VOICE (' + trigger_mode.upper() + ')' if voice_enabled else 'TEXT CHAT'}")
+    if voice_enabled:
+        lang_str = "AUTO-DETECT" if not language or language == "auto" else language.upper()
+        print(f"  STT Language:    {lang_str}")
     print(f"  RAM Usage:       {telemetry.ram_used_gb:.1f} / {telemetry.ram_total_gb:.1f} GB ({telemetry.ram_percent}%)")
     if telemetry.gpu_vram_used_mb is not None:
         print(f"  GPU VRAM Usage:  {telemetry.gpu_vram_used_mb:.0f} / {telemetry.gpu_vram_total_mb:.0f} MB")
@@ -48,6 +51,14 @@ def main():
     parser.add_argument("--trigger-mode", choices=["ptt", "vad"], default="ptt", help="Voice trigger mode: 'ptt' or 'vad'")
     parser.add_argument("--no-tts", action="store_true", help="Disable spoken response (text display only)")
     parser.add_argument("--voice-speed", type=float, default=1.0, help="Speech rate multiplier (default: 1.0)")
+    parser.add_argument(
+        "--language",
+        "--lang",
+        "-l",
+        type=str,
+        default="fa",
+        help="Speech recognition language code ('fa' for Persian, 'en' for English, 'auto' for auto-detect). Default: 'fa'",
+    )
     args = parser.parse_args()
 
     settings = get_default_settings(low_resource=args.low_resource)
@@ -76,6 +87,7 @@ def main():
     # Voice subsystem setup (if requested)
     voice_session = None
     voice_active = args.voice
+    stt_lang = None if args.language in ("auto", "none") else args.language
 
     if voice_active:
         try:
@@ -86,6 +98,7 @@ def main():
                 trigger_mode=args.trigger_mode,
                 tts_enabled=not args.no_tts,
                 tts_speed=args.voice_speed,
+                stt_language=stt_lang,
             )
 
             # Validate voice assets
@@ -114,7 +127,13 @@ def main():
 
     governor.start_idle_monitor()
     telemetry = governor.get_system_telemetry()
-    print_banner(settings, telemetry, voice_enabled=voice_active, trigger_mode=args.trigger_mode)
+    print_banner(
+        settings,
+        telemetry,
+        voice_enabled=voice_active,
+        trigger_mode=args.trigger_mode,
+        language=args.language,
+    )
 
     try:
         while True:
@@ -235,6 +254,7 @@ def main():
                                 trigger_mode=args.trigger_mode,
                                 tts_enabled=not args.no_tts,
                                 tts_speed=args.voice_speed,
+                                stt_language=stt_lang,
                             )
                             voice_session = VoiceSessionManager(orchestrator, audio_cfg)
                             voice_session.initialize_models()
