@@ -35,9 +35,25 @@ class LlamaServerManager:
     def server_url(self) -> str:
         return self._server_url
 
+    def check_health(self) -> bool:
+        """Checks if llama-server is currently answering on the health endpoint."""
+        try:
+            with httpx.Client(timeout=1.5, trust_env=False) as client:
+                resp = client.get(f"{self._server_url}/health")
+                return resp.status_code == 200
+        except Exception:
+            return False
+
+    def ensure_server_running(self, timeout_seconds: int = 45) -> bool:
+        """Ensures that llama-server is healthy, starting it if not already active."""
+        if self.check_health():
+            logger.info("llama-server is already active and healthy on %s.", self._server_url)
+            return True
+        return self.start(timeout_seconds=timeout_seconds)
+
     def start(self, timeout_seconds: int = 45) -> bool:
         """Starts llama-server on loopback with configured resource bounds."""
-        if self.is_running:
+        if self.is_running or self.check_health():
             logger.info("llama-server is already running.")
             return True
 

@@ -150,7 +150,10 @@ def main() -> None:
     governor.on_idle_timeout = server_mgr.stop
 
     # Ensure local llama-server is active
-    server_mgr.ensure_server_running()
+    try:
+        server_mgr.ensure_server_running()
+    except Exception as e:
+        logger.warning("Could not automatically connect/start llama-server: %s", e)
 
     # Core LLM Client, Memory, Task Manager, & Safe Agent Orchestrator
     llm_client = LocalLlmClient(settings)
