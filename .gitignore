@@ -53,6 +53,8 @@ models/*.safetensors
 models/tts/*.onnx
 models/tts/*.json
 models/stt/
+models/wake_word/*
+!models/wake_word/.gitkeep
 !models/tts/.gitkeep
 !models/stt/.gitkeep
 
@@ -67,6 +69,7 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 data/*.sqlite*
+data/ui_settings.json
 data/audit/
 !data/.gitkeep
 

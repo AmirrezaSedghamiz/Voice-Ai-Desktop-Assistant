@@ -3,11 +3,15 @@ Configuration schemas and settings for the Resource-Constrained Local AI Assista
 Enforces strict offline boundaries, validated parameter limits, and resource budgeting.
 """
 
+import sys
 from pathlib import Path
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class ResourceGovernorConfig(BaseModel):

@@ -2,11 +2,15 @@
 Configuration schemas for the audio subsystem (STT, TTS, devices, and triggers).
 """
 
+import sys
 from pathlib import Path
 from typing import Literal
 from pydantic import BaseModel, Field
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class AudioConfig(BaseModel):
